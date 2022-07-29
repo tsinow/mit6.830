@@ -89,14 +89,12 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here   may be problem?
-        StringBuilder sb = new StringBuilder("");
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < tupleDesc.numFields(); i++) {
-            String str = fields[i].toString();
-            sb.append(Objects.requireNonNullElse(str, "\t"));
-            if (i!=tupleDesc.numFields()-1)
+            sb.append(fields[i].toString());
             sb.append("\t");
         }
-        throw new UnsupportedOperationException("Implement this");
+        return sb.toString();
     }
 
     /**
@@ -112,6 +110,6 @@ public class Tuple implements Serializable {
      */
     public void resetTupleDesc(TupleDesc td) {
         // some code goes here
-        tupleDesc=td;
+        tupleDesc = td;
     }
 }

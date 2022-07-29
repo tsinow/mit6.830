@@ -135,10 +135,10 @@ public class HeapFile implements DbFile {
         return new HeapFileIterator(this, tid);
     }
 
-    private class HeapFileIterator implements DbFileIterator {
+    private static class HeapFileIterator implements DbFileIterator {
 
-        private HeapFile heapFile;
-        private TransactionId transactionId;
+        private final HeapFile heapFile;
+        private final TransactionId transactionId;
         private int currentPage;
         private Iterator<Tuple> iterator;
 
@@ -177,7 +177,7 @@ public class HeapFile implements DbFile {
 
         @Override
         public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
-            if (iterator==null||!iterator.hasNext()){
+            if (iterator == null || !iterator.hasNext()) {
                 throw new NoSuchElementException();
             }
             return iterator.next();
@@ -191,7 +191,7 @@ public class HeapFile implements DbFile {
 
         @Override
         public void close() {
-            iterator=null;
+            iterator = null;
         }
     }
 }
