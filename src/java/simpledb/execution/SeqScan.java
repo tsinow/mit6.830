@@ -20,7 +20,7 @@ public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
 
-    private TransactionId transactionId;
+    private final TransactionId transactionId;
     private int tableId;
     private String tableAlias;
     private DbFileIterator iterator;

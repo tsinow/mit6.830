@@ -54,8 +54,8 @@ public class HeapPage implements Page {
         header = new byte[getHeaderSize()];
         for (int i = 0; i < header.length; i++)
             header[i] = dis.readByte();
-
         tuples = new Tuple[numSlots];
+
         try {
             // allocate and read the actual records of this page
             for (int i = 0; i < tuples.length; i++)
@@ -95,7 +95,7 @@ public class HeapPage implements Page {
      */
     public HeapPage getBeforeImage() {
         try {
-            byte[] oldDataRef = null;
+            byte[] oldDataRef;
             synchronized (oldDataLock) {
                 oldDataRef = oldData;
             }
@@ -324,7 +324,8 @@ public class HeapPage implements Page {
         // some code goes here
         List<Tuple> tupleList = new ArrayList<>();
         for (int i = 0; i < numSlots; i++) {
-            if (isSlotUsed(i)) tupleList.add(tuples[i]);
+            if (isSlotUsed(i))
+                tupleList.add(tuples[i]);
         }
         return tupleList.iterator();
     }

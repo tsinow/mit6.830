@@ -80,9 +80,10 @@ public class HeapFile implements DbFile {
         try {
             f = new RandomAccessFile(file, "r");
             f.seek((long) pageNum * BufferPool.getPageSize());
+//            for lab1 query exercise
             byte[] bytes = new byte[BufferPool.getPageSize()];
             int read = f.read(bytes);
-            if (read != BufferPool.getPageSize()) {
+            if (read!=BufferPool.getPageSize()){
                 throw new IllegalArgumentException();
             }
             return new HeapPage(new HeapPageId(tableId, pageNum), bytes);
@@ -98,6 +99,7 @@ public class HeapFile implements DbFile {
         }
         throw new IllegalArgumentException();
     }
+
 
     // see DbFile.java for javadocs
     public void writePage(Page page) throws IOException {

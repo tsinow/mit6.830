@@ -1,16 +1,14 @@
 package simpledb;
 
 import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.Type;
 import simpledb.execution.SeqScan;
 import simpledb.storage.HeapFile;
+import simpledb.transaction.TransactionId;
+import simpledb.common.Type;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
-import simpledb.transaction.TransactionAbortedException;
-import simpledb.transaction.TransactionId;
 
-import java.io.*;
+import java.io.File;
 
 public class test {
 
@@ -30,8 +28,9 @@ public class test {
         // tuples via its iterator.
         TransactionId tid = new TransactionId();
         SeqScan f = new SeqScan(tid, table1.getId());
-        // and run it
+
         try {
+            // and run it
             f.open();
             while (f.hasNext()) {
                 Tuple tup = f.next();
