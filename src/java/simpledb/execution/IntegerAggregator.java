@@ -19,8 +19,7 @@ public class IntegerAggregator implements Aggregator {
     private final Type gbFieldType;
     private final int aField;
     private final Op what;
-    private int count;
-    HashMap<Field, Integer> map;
+    HashMap<Field, List<Integer>> map;
 
 
     /**
@@ -40,7 +39,6 @@ public class IntegerAggregator implements Aggregator {
         gbFieldType = gbfieldtype;
         aField = afield;
         this.what = what;
-        count = 0;
         map = new HashMap<>();
     }
 
@@ -59,32 +57,13 @@ public class IntegerAggregator implements Aggregator {
         int aValue = tup.getField(aField).hashCode();
 
         if (map.containsKey(gbIndex)) {
-            int oldValue = map.get(gbIndex);
-            switch (what) {
-                case MIN:
-                    map.replace(gbIndex, Integer.min(aValue, oldValue));
-                    break;
-                case MAX:
-                    map.replace(gbIndex, Integer.max(aValue, oldValue));
-                    break;
-                case SUM:
-                    map.replace(gbIndex, aValue + oldValue);
-                    break;
-                case AVG:
-                    map.replace(gbIndex, (oldValue * count + aValue) / (count + 1));
-                    break;
-                case COUNT:
-                    map.replace(gbIndex, oldValue + 1);
-                    break;
-            }
-            count++;
+            List<Integer> oldList = map.get(gbIndex);
+            oldList.add(aValue);
+            map.replace(gbIndex, oldList);
         } else {
-            if (what == Op.COUNT) {
-                map.put(gbIndex, 1);
-            } else {
-                map.put(gbIndex, aValue);
-            }
-            count = 1;
+            ArrayList<Integer> list = new ArrayList<>();
+            list.add(aValue);
+            map.put(gbIndex, list);
         }
     }
 
@@ -105,14 +84,39 @@ public class IntegerAggregator implements Aggregator {
             tupleDesc = new TupleDesc(new Type[]{gbFieldType, Type.INT_TYPE});
         }
         List<Tuple> tupleList = new ArrayList<>();
-        for (Map.Entry<Field, Integer> entry : map.entrySet()) {
+        for (Map.Entry<Field, List<Integer>> entry : map.entrySet()) {
             Tuple tuple = new Tuple(tupleDesc);
+            Field index = entry.getKey();
+            List<Integer> list = entry.getValue();
+            int aValue = 0;
+            for (int i = 0; i < list.size(); i++) {
+
+                switch (what) {
+                    case COUNT:
+                        aValue++;
+                        break;
+                    case AVG:
+                    case SUM:
+                        aValue += list.get(i);
+                    case MAX:
+                        if (aValue < list.get(i))
+                            aValue = list.get(i);
+                        break;
+                    case MIN:
+                        if (i == 0) aValue = list.get(0);
+                        if (aValue > list.get(i)) aValue = list.get(i);
+                        break;
+                }
+            }
+            if (what == Op.AVG) {
+                aValue /= list.size();
+            }
+
             if (gbField != NO_GROUPING) {
-                tuple.setField(0, entry.getKey());
-                tuple.setField(1, new IntField(entry.getValue()));
+                tuple.setField(0, index);
+                tuple.setField(1, new IntField(aValue));
             } else {
-                System.out.println("antkey is " + entry.getKey() + " value is " + entry.getValue());
-                tuple.setField(0, new IntField(entry.getValue()));
+                tuple.setField(0, new IntField(aValue));
             }
 
             tupleList.add(tuple);
