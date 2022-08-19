@@ -19,8 +19,8 @@ public class IntegerAggregator implements Aggregator {
     private final Type gbFieldType;
     private final int aField;
     private final Op what;
-    HashMap<Field, List<Integer>> map;
-
+    private final HashMap<Field, Integer> gbGroupAggregatedValues; // <GroupBy Column's Value, Aggregated Value>
+    private final HashMap<Field, Integer> gbGroupNTuple;
 
     /**
      * Aggregate constructor
@@ -39,7 +39,8 @@ public class IntegerAggregator implements Aggregator {
         gbFieldType = gbfieldtype;
         aField = afield;
         this.what = what;
-        map = new HashMap<>();
+        gbGroupAggregatedValues = new HashMap<>();
+        gbGroupNTuple = new HashMap<>();
     }
 
 
@@ -51,20 +52,39 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
-        Field gbIndex = null;
-        if (gbField != NO_GROUPING)
-            gbIndex = tup.getField(gbField);
-        int aValue = tup.getField(aField).hashCode();
+        resultIterator = null;
 
-        if (map.containsKey(gbIndex)) {
-            List<Integer> oldList = map.get(gbIndex);
-            oldList.add(aValue);
-            map.replace(gbIndex, oldList);
-        } else {
-            ArrayList<Integer> list = new ArrayList<>();
-            list.add(aValue);
-            map.put(gbIndex, list);
+        Field gbKey = null;
+        if (gbField != NO_GROUPING)
+            gbKey = tup.getField(gbField);
+        IntField f = (IntField)tup.getField(aField);
+
+        gbGroupNTuple.put(gbKey, gbGroupNTuple.getOrDefault(gbKey, 0)+1);
+
+        Integer aValue = gbGroupAggregatedValues.get(gbKey);
+
+        switch (what) {
+            case COUNT:
+                if(aValue == null) aValue = 0;
+                aValue = aValue + 1;
+                break;
+            case AVG:
+            case SUM:
+                if(aValue == null) aValue = 0;
+                aValue = aValue + f.getValue();
+                break;
+            case MAX:
+                if(aValue == null) aValue = f.getValue();
+                aValue = Math.max(aValue, f.getValue());
+                break;
+            case MIN:
+                if(aValue == null) aValue = f.getValue();
+                aValue = Math.min(aValue, f.getValue());
+                break;
+            default:
+                throw new RuntimeException("invalid aggregate operation, are you dumb?");
         }
+        gbGroupAggregatedValues.put(gbKey, aValue);
     }
 
     /**
@@ -76,6 +96,15 @@ public class IntegerAggregator implements Aggregator {
      * the constructor.
      */
     public OpIterator iterator() {
+        if(resultIterator == null) {
+            resultIterator = buildIterator();
+        }
+        return resultIterator;
+    }
+
+    private OpIterator resultIterator;
+
+    private OpIterator buildIterator() {
         // some code goes here
         TupleDesc tupleDesc;
         if (gbField == NO_GROUPING) {
@@ -84,45 +113,24 @@ public class IntegerAggregator implements Aggregator {
             tupleDesc = new TupleDesc(new Type[]{gbFieldType, Type.INT_TYPE});
         }
         List<Tuple> tupleList = new ArrayList<>();
-        for (Map.Entry<Field, List<Integer>> entry : map.entrySet()) {
+        for (Map.Entry<Field, Integer> entry : gbGroupAggregatedValues.entrySet()) {
             Tuple tuple = new Tuple(tupleDesc);
-            Field index = entry.getKey();
-            List<Integer> list = entry.getValue();
-            int aValue = 0;
-            for (int i = 0; i < list.size(); i++) {
+            Field gbKey = entry.getKey();
+            Integer aValue = entry.getValue();
 
-                switch (what) {
-                    case COUNT:
-                        aValue++;
-                        break;
-                    case AVG:
-                    case SUM:
-                        aValue += list.get(i);
-                    case MAX:
-                        if (aValue < list.get(i))
-                            aValue = list.get(i);
-                        break;
-                    case MIN:
-                        if (i == 0) aValue = list.get(0);
-                        if (aValue > list.get(i)) aValue = list.get(i);
-                        break;
-                }
-            }
             if (what == Op.AVG) {
-                aValue /= list.size();
+                aValue /= gbGroupNTuple.get(gbKey);
             }
 
             if (gbField != NO_GROUPING) {
-                tuple.setField(0, index);
+                tuple.setField(0, gbKey);
                 tuple.setField(1, new IntField(aValue));
             } else {
                 tuple.setField(0, new IntField(aValue));
             }
-
             tupleList.add(tuple);
         }
         return new TupleIterator(tupleDesc, tupleList);
-
     }
 
 }
