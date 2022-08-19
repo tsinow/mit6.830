@@ -15,26 +15,24 @@ public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
 
+    private final int gbField;
+    private final Type gbFieldType;
+    private final int aField;
+    private final Op what;
+    private int count;
+    HashMap<Field, Integer> map;
+
+
     /**
      * Aggregate constructor
      *
-     * @param gbfield
-     * the 0-based index of the group-by field in the tuple, or
-     * NO_GROUPING if there is no grouping
-     * @param gbfieldtype
-     * the type of the group by field (e.g., Type.INT_TYPE), or null
-     * if there is no grouping
-     * @param afield
-     * the 0-based index of the aggregate field in the tuple
-     * @param what
-     * the aggregation operator
+     * @param gbfield     the 0-based index of the group-by field in the tuple, or
+     *                    NO_GROUPING if there is no grouping
+     * @param gbfieldtype the type of the group by field (e.g., Type.INT_TYPE), or null
+     *                    if there is no grouping
+     * @param afield      the 0-based index of the aggregate field in the tuple
+     * @param what        the aggregation operator
      */
-    private int gbField;
-    private Type gbFieldType;
-    private int aField;
-    private Op what;
-    private int count;
-    HashMap<Field, Integer> map;
 
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
@@ -55,7 +53,9 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
-        Field gbIndex = tup.getField(gbField);
+        Field gbIndex = null;
+        if (gbField != NO_GROUPING)
+            gbIndex = tup.getField(gbField);
         int aValue = tup.getField(aField).hashCode();
 
         if (map.containsKey(gbIndex)) {
@@ -81,9 +81,9 @@ public class IntegerAggregator implements Aggregator {
         } else {
             if (what == Op.COUNT) {
                 map.put(gbIndex, 1);
-            } else
+            } else {
                 map.put(gbIndex, aValue);
-
+            }
             count = 1;
         }
     }
@@ -107,11 +107,11 @@ public class IntegerAggregator implements Aggregator {
         List<Tuple> tupleList = new ArrayList<>();
         for (Map.Entry<Field, Integer> entry : map.entrySet()) {
             Tuple tuple = new Tuple(tupleDesc);
-
             if (gbField != NO_GROUPING) {
                 tuple.setField(0, entry.getKey());
                 tuple.setField(1, new IntField(entry.getValue()));
-            }else{
+            } else {
+                System.out.println("antkey is " + entry.getKey() + " value is " + entry.getValue());
                 tuple.setField(0, new IntField(entry.getValue()));
             }
 
