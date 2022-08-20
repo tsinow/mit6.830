@@ -23,6 +23,8 @@ public class HeapPage implements Page {
     final byte[] header;
     final Tuple[] tuples;
     final int numSlots;
+    private boolean dirty = false;
+    private TransactionId tid = null;
 
     byte[] oldData;
     private final Byte oldDataLock = (byte) 0;
@@ -253,6 +255,14 @@ public class HeapPage implements Page {
     public void deleteTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+        if (t.getRecordId().getPageId() == pid) {
+            int location = t.getRecordId().getTupleNumber();
+            if (!isSlotUsed(location)) throw new DbException("tuple slot is already empty");
+            markSlotUsed(location, false);
+            tuples[location] = null;
+        } else {
+            throw new DbException("tuple is not on this page");
+        }
     }
 
     /**
@@ -266,6 +276,20 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+        if (getNumEmptySlots() == 0) throw new DbException("the page is full");
+        if (!t.getTupleDesc().equals(td)) throw new DbException("tupledesc is mismatch");
+        for (int i = 0; i < header.length; i++) {
+            for (int j = 0; j < 8; j++) {
+                int used = (header[i] >> j) & 1;
+                if (used == 0) {
+                    int tupleLocation = i * 8 + j;
+                    markSlotUsed(tupleLocation, true);
+                    t.setRecordId(new RecordId(pid, tupleLocation));
+                    tuples[tupleLocation] = t;
+                    return;
+                }
+            }
+        }
     }
 
     /**
@@ -275,6 +299,10 @@ public class HeapPage implements Page {
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
         // not necessary for lab1
+        this.dirty = true;
+        if (dirty)
+            this.tid = tid;
+        else this.tid=null;
     }
 
     /**
@@ -283,7 +311,7 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // some code goes here
         // Not necessary for lab1
-        return null;
+        return tid;
     }
 
     /**
@@ -313,7 +341,14 @@ public class HeapPage implements Page {
      */
     private void markSlotUsed(int i, boolean value) {
         // some code goes here
-        // not necessary for lab1
+        int index = i / 8;
+        int offset = i % 8;
+        if (!value) {//delete slot
+            header[index] = (byte) (header[index] & (~(1 << offset)));
+        } else {//add slot
+            header[index] = (byte) (header[index] | (1 << offset));
+        }
+
     }
 
     /**

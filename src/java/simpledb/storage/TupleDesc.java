@@ -189,11 +189,10 @@ public class TupleDesc implements Serializable {
         // some code goes here
         if (o instanceof TupleDesc) {
             TupleDesc tupleDesc = (TupleDesc) o;
-            int length = numFields();
-            if (tupleDesc.numFields() == length) {
-                for (int i = 0; i < length; i++) {
-                    if (getFieldType(i) != tupleDesc.getFieldType(i) ||
-                            !Objects.equals(getFieldName(i), tupleDesc.getFieldName(i)))
+            int fieldNum = numFields();
+            if (tupleDesc.numFields() == fieldNum) {
+                for (int i = 0; i < fieldNum; i++) {
+                    if (getFieldType(i) != tupleDesc.getFieldType(i))
                         return false;
                 }
                 return true;
@@ -205,7 +204,7 @@ public class TupleDesc implements Serializable {
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
-        throw new UnsupportedOperationException("unimplemented");
+        return toString().hashCode();
     }
 
     /**
