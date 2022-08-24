@@ -189,9 +189,9 @@ public class TupleDesc implements Serializable {
         // some code goes here
         if (o instanceof TupleDesc) {
             TupleDesc tupleDesc = (TupleDesc) o;
-            int fieldNum = numFields();
-            if (tupleDesc.numFields() == fieldNum) {
-                for (int i = 0; i < fieldNum; i++) {
+            int length = numFields();
+            if (tupleDesc.numFields() == length) {
+                for (int i = 0; i < length; i++) {
                     if (getFieldType(i) != tupleDesc.getFieldType(i))
                         return false;
                 }
