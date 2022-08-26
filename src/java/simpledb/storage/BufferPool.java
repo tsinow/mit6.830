@@ -97,11 +97,11 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-//        if (perm == Permissions.READ_ONLY) {
-//            rwLock.readLock().lock();
-//        } else if (perm == Permissions.READ_WRITE) {
-//            rwLock.writeLock().lock();
-//        }
+       if (perm == Permissions.READ_ONLY) {
+           rwLock.readLock().lock();
+       } else if (perm == Permissions.READ_WRITE) {
+           rwLock.writeLock().lock();
+       }
         Page page = idToPages.get(pid);
         if (page == null) {
             if (pageNum >= maxPageNum) {
@@ -182,7 +182,9 @@ public class BufferPool {
         List<Page> dirtyList = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
         for (Page page : dirtyList) {
             page.markDirty(true, tid);
-//            idToPages.put(page.getId(),page);
+            // for bufferWiterTest and evict
+            if(!idToPages.containsKey(page.getId()))
+            idToPages.put(page.getId(),page);
         }
     }
 

@@ -80,7 +80,6 @@ public class HeapFile implements DbFile {
         try {
             f = new RandomAccessFile(file, "r");
             f.seek((long) pageNum * BufferPool.getPageSize());
-//            for lab1 query exercise
             byte[] bytes = new byte[BufferPool.getPageSize()];
             int read = f.read(bytes);
             if (read != BufferPool.getPageSize()) {
@@ -114,6 +113,16 @@ public class HeapFile implements DbFile {
         }
     }
 
+    // public void writePage(PageId pageId,byte[] bytes) throws IOException {
+    //     int pageNum = pageId.getPageNumber();
+    //     try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+    //         f.seek((long) pageNum * BufferPool.getPageSize());
+    //         f.write(bytes);
+    //     } catch (IOException e) {
+    //         e.printStackTrace();
+    //     }
+    // }
+
     /**
      * Returns the number of pages in this HeapFile.
      */
@@ -138,8 +147,11 @@ public class HeapFile implements DbFile {
                 return dirtyList;
             }
         }
-        System.out.println("pgNo is full");
+
         HeapPage page = new HeapPage(new HeapPageId(tableId, pgNo), HeapPage.createEmptyPageData());
+        // HeapPage page=(HeapPage)readPage(new HeapPageId(tableId, pgNo));
+        // writePage(page.pid,HeapPage.createEmptyPageData());
+        // bufferPool.getPage(tid, page.pid, Permissions.READ_WRITE);
         page.insertTuple(t);
         dirtyList.add(page);
         writePage(page);

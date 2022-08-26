@@ -61,7 +61,8 @@ public class HeapPageId implements PageId {
         // some code goes here
         if (o instanceof PageId) {
             PageId pageId = (PageId) o;
-            return pageId.hashCode() == hashCode();
+            return pageId.getTableId() == getTableId()
+                    && pageId.getPageNumber() == getPageNumber();
         }
         return false;
     }

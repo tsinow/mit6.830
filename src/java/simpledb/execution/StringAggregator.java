@@ -3,7 +3,6 @@ package simpledb.execution;
 import simpledb.common.Type;
 import simpledb.storage.*;
 
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.Map;
  */
 public class StringAggregator implements Aggregator {
 
-    @Serial
     private static final long serialVersionUID = 1L;
 
     private final int gbField;
