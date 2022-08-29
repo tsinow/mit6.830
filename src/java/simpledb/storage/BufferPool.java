@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -46,7 +47,6 @@ public class BufferPool {
 
 
     private final int maxPageNum;
-    private int pageNum;
 
     private ConcurrentHashMap<PageId, Page> idToPages;
 
@@ -60,7 +60,6 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
         maxPageNum = numPages;
-        pageNum = 0;
         idToPages = new ConcurrentHashMap<>();
         rwLock = new ReentrantReadWriteLock();
     }
@@ -97,20 +96,19 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-    //    if (perm == Permissions.READ_ONLY) {
-    //        rwLock.readLock().lock();
-    //    } else if (perm == Permissions.READ_WRITE) {
-    //        rwLock.writeLock().lock();
-    //    }
+        //    if (perm == Permissions.READ_ONLY) {
+        //        rwLock.readLock().lock();
+        //    } else if (perm == Permissions.READ_WRITE) {
+        //        rwLock.writeLock().lock();
+        //    }
         Page page = idToPages.get(pid);
         if (page == null) {
-            if (pageNum >= maxPageNum) {
+            if (idToPages.size() >= maxPageNum) {
                 evictPage();
             }
             DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
             page = file.readPage(pid);
             idToPages.put(pid, page);
-            pageNum++;
         }
         return page;
     }
@@ -183,8 +181,9 @@ public class BufferPool {
         for (Page page : dirtyList) {
             page.markDirty(true, tid);
             // for bufferWiterTest and evict
-            if(!idToPages.containsKey(page.getId()))
-            idToPages.put(page.getId(),page);
+            if (!idToPages.containsKey(page.getId())) {
+                idToPages.put(page.getId(), page);
+            }
         }
     }
 
@@ -223,11 +222,9 @@ public class BufferPool {
         for (PageId id : idToPages.keySet()) {
             HeapPage heapPage = (HeapPage) idToPages.get(id);
             if (heapPage.isDirty() != null) {
-                Database.getCatalog().getDatabaseFile(id.getTableId()).writePage(heapPage);
-                idToPages.remove(id);
+                flushPage(id);
             }
         }
-
     }
 
     /**
@@ -242,7 +239,7 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
-        
+        idToPages.remove(pid);
     }
 
     /**
@@ -253,9 +250,8 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-        Page page=idToPages.get(pid);
+        Page page = idToPages.get(pid);
         Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(page);
-        idToPages.remove(pid);
     }
 
     /**
@@ -273,14 +269,18 @@ public class BufferPool {
     private synchronized void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
-        for (Map.Entry<PageId, Page> set : idToPages.entrySet()) {
-            if (set.getValue().isDirty() == null) {
-                idToPages.remove(set.getKey());
-                pageNum--;
-                return;
-            }
-        }
-        throw new DbException("can't evict");
-    }
+        int randomLoc = ThreadLocalRandom.current().nextInt(0, idToPages.size());
+        Iterator<Map.Entry<PageId, Page>> iterator = idToPages.entrySet().iterator();
 
+        for (int i = 0; i < randomLoc; i++) {
+            iterator.next();
+        }
+        PageId pid=iterator.next().getKey();
+        try {
+            flushPage(pid);
+            discardPage(pid);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
