@@ -97,11 +97,11 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-       if (perm == Permissions.READ_ONLY) {
-           rwLock.readLock().lock();
-       } else if (perm == Permissions.READ_WRITE) {
-           rwLock.writeLock().lock();
-       }
+    //    if (perm == Permissions.READ_ONLY) {
+    //        rwLock.readLock().lock();
+    //    } else if (perm == Permissions.READ_WRITE) {
+    //        rwLock.writeLock().lock();
+    //    }
         Page page = idToPages.get(pid);
         if (page == null) {
             if (pageNum >= maxPageNum) {
@@ -224,6 +224,7 @@ public class BufferPool {
             HeapPage heapPage = (HeapPage) idToPages.get(id);
             if (heapPage.isDirty() != null) {
                 Database.getCatalog().getDatabaseFile(id.getTableId()).writePage(heapPage);
+                idToPages.remove(id);
             }
         }
 
@@ -241,7 +242,7 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
-
+        
     }
 
     /**
@@ -252,7 +253,9 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        Page page=idToPages.get(pid);
+        Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(page);
+        idToPages.remove(pid);
     }
 
     /**
