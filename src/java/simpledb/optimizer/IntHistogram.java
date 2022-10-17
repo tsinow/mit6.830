@@ -121,7 +121,7 @@ public class IntHistogram {
                 selectNum += ((v - min) / width) * ((double) sum / tupNum);
 
                 if (op == Predicate.Op.LESS_THAN_OR_EQ) {
-                    if (targetHashMap.containsKey(v)) selectNum = targetHashMap.get(v);
+                    if (targetHashMap.containsKey(v)) selectNum += targetHashMap.get(v);
                 }
                 break;
             case GREATER_THAN:
@@ -140,7 +140,7 @@ public class IntHistogram {
                 selectNum += ((max - v) / width) * ((double) sum / tupNum);
 
                 if (op == Predicate.Op.GREATER_THAN_OR_EQ) {
-                    if (targetHashMap.containsKey(v)) selectNum = targetHashMap.get(v);
+                    if (targetHashMap.containsKey(v)) selectNum += targetHashMap.get(v);
                 }
                 break;
         }
