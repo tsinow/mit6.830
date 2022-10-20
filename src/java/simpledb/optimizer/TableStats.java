@@ -1,5 +1,6 @@
 package simpledb.optimizer;
 
+import simpledb.common.Catalog;
 import simpledb.common.Database;
 import simpledb.common.DbException;
 import simpledb.common.Type;
@@ -73,9 +74,12 @@ public class TableStats {
     private final int tableid;
     private int ioCostPerPage;
     private int tupleNum;
+    private int pageNum;
     private Type[] type;
     private int[] min;
     private int[] max;
+    private ConcurrentMap<Integer, IntHistogram> intHistogramMap;
+    private ConcurrentMap<Integer, StringHistogram> stringHistogramMap;
 
     /**
      * Create a new TableStats object, that keeps track of statistics on each
@@ -96,6 +100,7 @@ public class TableStats {
         // some code goes here
         this.tableid = tableid;
         this.ioCostPerPage = ioCostPerPage;
+        int tupleDescSize=0;
         SeqScan seqScan = new SeqScan(new TransactionId(), tableid);
         try {
             seqScan.open();
@@ -104,6 +109,7 @@ public class TableStats {
         }
         this.tupleNum = 0;
         int numField = seqScan.getTupleDesc().numFields();
+        tupleDescSize=seqScan.getTupleDesc().getSize();
         type = new Type[numField];
         min = new int[numField];
         max = new int[numField];
@@ -133,7 +139,41 @@ public class TableStats {
                 e.printStackTrace();
             }
         }
+        try {
+            seqScan.rewind();
+        } catch (DbException | TransactionAbortedException e) {
+            e.printStackTrace();
+        }
+
+        this.intHistogramMap = new ConcurrentHashMap<>();
+        this.stringHistogramMap = new ConcurrentHashMap<>();
+        for (int i = 0; i < numField; i++) {
+            if (type[i] == Type.INT_TYPE) {
+                IntHistogram intHistogram = new IntHistogram(NUM_HIST_BINS, min[i], max[i]);
+                intHistogramMap.put(i, intHistogram);
+            } else if (type[i] == Type.STRING_TYPE) {
+                StringHistogram stringHistogram = new StringHistogram(NUM_HIST_BINS);
+                stringHistogramMap.put(i, stringHistogram);
+            }
+        }
+        while (true) {
+            try {
+                if (!seqScan.hasNext()) break;
+                Tuple tupleInScan = seqScan.next();
+                for (int i = 0; i < numField; i++) {
+                    if (type[i] == Type.INT_TYPE) {
+                        intHistogramMap.get(i).addValue(((IntField) tupleInScan.getField(i)).getValue());
+                    } else if (type[i] == Type.STRING_TYPE) {
+                        stringHistogramMap.get(i).addValue(((StringField) tupleInScan.getField(i)).getValue());
+                    }
+                }
+            } catch (TransactionAbortedException | DbException e) {
+                e.printStackTrace();
+            }
+        }
         seqScan.close();
+
+        pageNum=(tupleNum*tupleDescSize)/BufferPool.getPageSize();
     }
 
     /**
@@ -150,7 +190,7 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        return pageNum*ioCostPerPage;
     }
 
     /**
@@ -163,7 +203,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        return (int)(selectivityFactor*tupleNum);
     }
 
     /**
@@ -194,46 +234,12 @@ public class TableStats {
         // some code goes here
         Type typeInScan = Database.getCatalog().getTupleDesc(tableid).getFieldType(field);
         double result = 0.0;
-        SeqScan seqScan = new SeqScan(new TransactionId(), tableid);
-        Tuple tupleInScan;
         switch (typeInScan) {
             case INT_TYPE:
-                IntHistogram intHistogram = new IntHistogram(NUM_HIST_BINS, min[field], max[field]);
-                try {
-                    seqScan.open();
-                } catch (DbException | TransactionAbortedException e) {
-                    e.printStackTrace();
-                }
-                while (true) {
-                    try {
-                        if (!seqScan.hasNext()) break;
-                        tupleInScan = seqScan.next();
-                        intHistogram.addValue(((IntField) tupleInScan.getField(field)).getValue());
-                    } catch (TransactionAbortedException | DbException e) {
-                        e.printStackTrace();
-                    }
-                }
-                seqScan.close();
-                result = intHistogram.estimateSelectivity(op, ((IntField) constant).getValue());
+                result = intHistogramMap.get(field).estimateSelectivity(op, ((IntField) constant).getValue());
                 break;
             case STRING_TYPE:
-                StringHistogram stringHistogram = new StringHistogram(NUM_HIST_BINS);
-                try {
-                    seqScan.open();
-                } catch (DbException | TransactionAbortedException e) {
-                    e.printStackTrace();
-                }
-                while (true) {
-                    try {
-                        if (!seqScan.hasNext()) break;
-                        tupleInScan = seqScan.next();
-                        stringHistogram.addValue(((StringField) tupleInScan.getField(field)).getValue());
-                    } catch (TransactionAbortedException | DbException e) {
-                        e.printStackTrace();
-                    }
-                }
-                seqScan.close();
-                result = stringHistogram.estimateSelectivity(op, ((StringField) constant).getValue());
+                result = stringHistogramMap.get(field).estimateSelectivity(op, ((StringField) constant).getValue());
         }
         return result;
     }
