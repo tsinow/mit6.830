@@ -188,6 +188,7 @@ public class TableStats {
      *
      * @return The estimated cost of scanning the table.
      */
+//    need to scan twice, but return the cost of one scan
     public double estimateScanCost() {
         // some code goes here
         return pageNum*ioCostPerPage;
